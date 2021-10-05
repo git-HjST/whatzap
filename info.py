@@ -135,24 +135,37 @@ async def commands(state, context, filter_text):
     blank_before = True
 
     async def add_field(name, value):
-        # maximum field count in an embed is 25, so we have to send the message if we hit 25
-        nonlocal embed
+        # maximum field count in an embed is 25
+        # maximum embed count in a message is 10,
+        # so we have to send the message if we hit 10
+        nonlocal embeds
         nonlocal field_count
+        nonlocal embed_count
         nonlocal blank_before
         if blank_before:
-            embed.add_field(name='\u200B', value='\u200B', inline=False)
+            embeds[embed_count].add_field(name='\u200B', value='\u200B', inline=False)
             blank_before = False
             field_count += 1
-            if field_count == 25:    
-                await context.channel.send(embed=embed)
-                embed = discord.Embed()
+            if field_count == 25:
+                embed_count += 1
+                embeds.append(discord.Embed())
                 field_count = 0
-        embed.add_field(name=name, value=value, inline=False)
+            if embed_count == 10:
+                await context.channel.send(embeds=embeds)
+                field_count = 0
+                embeds.clear()
+                embed_count = 0
+        embeds[embed_count].add_field(name=name, value=value, inline=False)
         field_count += 1
-        if field_count == 25:    
-            await context.channel.send(embed=embed)
-            embed = discord.Embed()
+        if field_count == 25:
+            embed_count += 1
+            embeds.append(discord.Embed())
             field_count = 0
+        if embed_count == 10:
+            await context.channel.send(embeds=embeds)
+            field_count = 0
+            embeds.clear()
+            embed_count = 0
 
     for i, file in enumerate(sorted(list(os.listdir("docs/")), key=lambda x:int(x.split("-")[0]))):
         with open(os.path.join("docs", file)) as f:
@@ -162,8 +175,8 @@ async def commands(state, context, filter_text):
                 embed.description = "".join(f.readlines())
                 embed.description += "\nShowing all commands"
                 if filter_text:
-                    embed.description += f" containing {filter_text}"
-                embed.description += "."
+                    embeds[embed_count].description += f" containing {filter_text}"
+                embeds[embed_count].description += "."
                 continue
             name = None
             value = ""
